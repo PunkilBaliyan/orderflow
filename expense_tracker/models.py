@@ -37,3 +37,10 @@ def make_expense(raw_date: str, raw_amount: str, category: str, note: str) -> di
         "category": category,
         "note": note.strip(),
     }
+
+def next_id(expenses: list[dict]) -> int:
+    """Return the next unused expense id."""
+    highest = 0
+    for expense in expenses:
+        highest = max(highest, expense["id"])
+    return highest + 1
