@@ -38,6 +38,7 @@ def make_expense(raw_date: str, raw_amount: str, category: str, note: str) -> di
         "note": note.strip(),
     }
 
+
 def next_id(expenses: list[dict]) -> int:
     """Return the next unused expense id."""
     highest = 0

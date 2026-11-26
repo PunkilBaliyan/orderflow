@@ -1,29 +1,37 @@
+"""Save and load expenses as a JSON file."""
+
 import json
+import logging  # changed
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from expense_tracker.exceptions import StorageError
 
+logger = logging.getLogger(__name__)  # changed
+
 DATA_FILE = Path("data/expenses.json")
 
-def save_expenses(expenses:list[dict],path:Path=DATA_FILE)-> None:
-    """Write all of the expenses to the JSON file """
-    records=[]
+
+def save_expenses(expenses: list[dict], path: Path = DATA_FILE) -> None:
+    """Write all expenses to a JSON file."""
+    records = []
     for expense in expenses:
-        record = dict(expense)
-        record["amount"] = str(expense["amount"])
+        record = dict(expense)  # copy, so the original keeps its Decimal
+        record["amount"] = str(expense["amount"])  # JSON has no Decimal
         records.append(record)
     try:
-        path.parent.mkdir(parents=True,exist_ok=True)
-        path.write_text(json.dumps(records,indent=2),encoding="utf-8")
-    except OSError as e:
-        raise StorageError(f"cannot save {path}:{e}") from e
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(records, indent=2), encoding="utf-8")
+    except OSError as exc:
+        raise StorageError(f"cannot save {path}: {exc}") from exc
+    logger.info("Saved %d expenses to %s", len(expenses), path)  # changed
 
-def load_expenses(path:Path=DATA_FILE)-> list[dict]:
-    """Read Expenses from the JSON file and return a list of dictionaries to the user"""
+
+def load_expenses(path: Path = DATA_FILE) -> list[dict]:
+    """Read expenses from a JSON file. Missing or corrupt file gives []."""
     try:
         records = json.loads(path.read_text(encoding="utf-8"))
-        expenses=[]
+        expenses = []
         for record in records:
             expenses.append(
                 {
@@ -34,12 +42,17 @@ def load_expenses(path:Path=DATA_FILE)-> list[dict]:
                     "note": record["note"],
                 }
             )
+        logger.debug("Loaded %d expenses from %s", len(expenses), path)  # changed
         return expenses
     except FileNotFoundError:
-        print(f"Warinng : {path} not found. Starting with no expenses")
+        logger.warning(
+            "Data file %s not found. Starting with no expenses.", path
+        )  # changed
         return []
-    except OSError as e:
-        raise StorageError(f"cannot read {path}:{e}") from e
-    except (ValueError,KeyError,TypeError,InvalidOperation):
-        print(f"Warning: {path} is corrupted. Starting with no expenses")
+    except OSError as exc:
+        raise StorageError(f"cannot read {path}: {exc}") from exc
+    except (ValueError, KeyError, TypeError, InvalidOperation) as exc:
+        logger.warning(
+            "Data file %s is corrupt (%r). Starting empty.", path, exc
+        )  # changed
         return []
