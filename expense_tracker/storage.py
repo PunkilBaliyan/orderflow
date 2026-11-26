@@ -6,7 +6,9 @@ import logging  # changed
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-from expense_tracker.exceptions import StorageError
+from collections.abc import Iterator
+from expense_tracker.exceptions import InvalidExpenseError, StorageError
+from expense_tracker.models import make_expense
 
 logger = logging.getLogger(__name__)  # changed
 
@@ -72,3 +74,28 @@ def load_expenses(path: Path = DATA_FILE) -> list[dict]:
             "Data file %s is corrupt (%r). Starting empty.", path, exc
         )  # changed
         return []
+
+def read_csv_expenses(path: Path) -> Iterator[dict]:
+    """Generator: yield one valid expense per good CSV row, skip bad rows."""
+    try:
+        with open(path, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for column in ["date", "amount", "category", "note"]:
+                if reader.fieldnames is None or column not in reader.fieldnames:
+                    raise StorageError(
+                        f"{path} needs the columns: date, amount, category, note"
+                    )
+            for row in reader:
+                if None in row or None in row.values():
+                    logger.warning("Skipping row with missing values: %s", row)
+                    continue
+                try:
+                    expense = make_expense(
+                        row["date"], row["amount"], row["category"], row["note"]
+                    )
+                except InvalidExpenseError as e:
+                    logger.warning("Skipping invalid row %s: %s", row, e)
+                    continue
+                yield expense
+    except (OSError, UnicodeDecodeError) as e:
+        raise StorageError(f"cannot read {path}: {e}") from e
