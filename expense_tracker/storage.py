@@ -13,18 +13,20 @@ DATA_FILE = Path("data/expenses.json")
 
 
 def save_expenses(expenses: list[dict], path: Path = DATA_FILE) -> None:
-    """Write all expenses to a JSON file."""
+    """Write all expenses to a JSON file (safely, via a temporary file)."""
     records = []
     for expense in expenses:
         record = dict(expense)  # copy, so the original keeps its Decimal
         record["amount"] = str(expense["amount"])  # JSON has no Decimal
         records.append(record)
+    tmp_path = path.with_name(path.name + ".tmp")
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(records, indent=2), encoding="utf-8")
+        tmp_path.write_text(json.dumps(records, indent=2), encoding="utf-8")
+        tmp_path.replace(path)  # swap the finished file into place
     except OSError as exc:
         raise StorageError(f"cannot save {path}: {exc}") from exc
-    logger.info("Saved %d expenses to %s", len(expenses), path)  # changed
+    logger.info("Saved %d expenses to %s", len(expenses), path)
 
 
 def load_expenses(path: Path = DATA_FILE) -> list[dict]:
