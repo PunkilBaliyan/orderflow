@@ -6,6 +6,7 @@ from pathlib import Path
 from expense_tracker.exceptions import ExpenseTrackerError
 from expense_tracker.models import CATEGORIES, make_expense, next_id
 from expense_tracker.storage import load_expenses, read_csv_expenses, save_expenses, write_csv
+from expense_tracker.reports import build_report, format_report
 
 LOG_FILE = Path("logs/app.log")
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ def build_parser() -> argparse.ArgumentParser:
     export_parser.add_argument("path", type=Path)
     import_parser = sub_parser.add_parser("import-csv", help="import from a CSV file")
     import_parser.add_argument("path", type=Path)
+    sub_parser.add_parser("report", help="summarise all expenses")
     return parser
 
 
@@ -99,6 +101,11 @@ def import_csv_command(args: argparse.Namespace) -> None:
     save_expenses(expenses)
     print(f"Imported {len(expenses) - count_before} expenses.")
 
+def report_command(args: argparse.Namespace) -> None:
+    """Print a summary of all saved expenses."""
+    expenses = load_expenses()
+    report = build_report(expenses)
+    print(format_report(report))
 
 def main(argv: list[str] | None = None) -> int:
     """Run the program. Returns 0 on success, 1 on a handled error."""
@@ -113,6 +120,8 @@ def main(argv: list[str] | None = None) -> int:
             export_csv_command(args)
         elif args.command == "import-csv":
             import_csv_command(args)
+        elif args.command == "report":
+            report_command(args)
     except ExpenseTrackerError as e:
         logger.error("%s", e)
         return 1
