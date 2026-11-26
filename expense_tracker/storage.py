@@ -1,5 +1,6 @@
 """Save and load expenses as a JSON file."""
 
+import csv
 import json
 import logging  # changed
 from decimal import Decimal, InvalidOperation
@@ -10,6 +11,19 @@ from expense_tracker.exceptions import StorageError
 logger = logging.getLogger(__name__)  # changed
 
 DATA_FILE = Path("data/expenses.json")
+CSV_COLUMNS = ["id", "date", "amount", "category", "note"]
+
+
+def write_csv(expenses: list[dict], path: Path) -> None:
+    """Export all expenses to a CSV file."""
+    try:
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS)
+            writer.writeheader()
+            writer.writerows(expenses)
+    except OSError as exc:
+        raise StorageError(f"cannot write {path}: {exc}") from exc
+    logger.info("Exported %d expenses to %s", len(expenses), path)
 
 
 def save_expenses(expenses: list[dict], path: Path = DATA_FILE) -> None:
